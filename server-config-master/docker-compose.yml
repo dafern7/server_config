@@ -1,0 +1,58 @@
+version: "3.7"
+services:
+    database:
+        image: postgres:11.5
+        volumes:
+            - data:/var/lib/postgresql/data
+        ports: 
+          - "3002:5432"
+        environment:
+          POSTGRES_USER: ist-dev
+          POSTGRES_PASSWORD: ist-dev
+          ALLOW_IP_RANGE: "0.0.0.0/0"
+        restart: always
+    api:
+        build:
+            context: ./node-service
+        volumes:
+            - ./node-service:/app
+        ports:
+            - "8081:8080"
+        command: "npm run dev"
+        restart: always
+        depends_on:
+            - database
+    optimizer_api:
+        build:
+            context: ./python-service
+        volumes:
+            - ./python-service:/optimizer
+        ports:
+            - "5000:5000"
+        command: "python app.py"
+        restart: always
+        depends_on:
+            - database
+    nginx:
+        image: nginx:1.17
+        volumes:
+            - ./nginx.conf:/etc/nginx/nginx.conf:ro
+        ports:
+            - "3001:80"
+        depends_on:
+            - api
+            - web
+        restart: always
+    web:
+        command: npm run start
+        image: node:10.16.3
+        working_dir: /app
+        environment: 
+            - NODE_ENV=development
+            - CHOKIDAR_USEPOLLING=true
+        volumes:
+            - ./react-app:/app
+
+
+volumes: 
+    data: {}
